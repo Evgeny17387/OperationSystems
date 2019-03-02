@@ -16,7 +16,7 @@
 #define DIGIT_LAST                  '9'
 #define WHITE_SPACE                 ' '
 
-// Error codes
+// Retun codes
 
 #define SUCCESS                      0
 #define ERROR_NOT_DIGIT             -1
@@ -25,7 +25,7 @@
 #define ERROR_DIVISION_BY_ZERO      -4
 #define ERROR_UNKNOWN               -5
 
-// Calculation system states
+// Parser system states
 
 #define STATE_DIGIT                 0
 #define STATE_WHITE_SPACE_FIRST     1
@@ -34,7 +34,7 @@
 #define STATE_CALCULATE             4
 #define STATE_ERONEUSE              5
 
-// Operatos
+// Operators
 
 #define OPERATOR_ADD               '+'
 #define OPERATOR_SUB               '-'
@@ -50,13 +50,13 @@
 
 ////////////////////////////////////////////////// Auxiliary functions
 
-// Parse the expression from the user and prints 'error' if not in tenpate, otherwise calculates it
+// Parse the expression from the user and prints 'error' if not in template, otherwise calculates it
 int parseExpression(char* input);
 
-// Calculates digit out of char, otherwise returns error if not digit
+// Calculates digit out of char, otherwise returns error if char is not a digit
 int getNum(char input);
 
-// If operator eligible, returns itm otherwise returns an error
+// If operator eligible, returns it's operation, otherwise returns an error
 int getOperation(char input);
 
 // Calculates the result of an expression and returns it
