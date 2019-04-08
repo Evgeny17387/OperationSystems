@@ -88,11 +88,9 @@ const char * const list[][6] = {{"1956",	"Lugano",		"Switzerland",									"N/A"
 								{"2018",	"Lisbon",		"Israel",										"529",	"93",	"Cyprus"}};
 
 #define LIST_LENGTH 			63
+
 #define BUFFER_SIZE 			300
-#define END_SESSION 			"exit"
-#define END_SESSION_RESPONSE 	"\n"
 #define PORTNO 					8888
-#define END_FILE 				13
 
 #define MAX_ARGUMENTS       	10
 #define ARGS_DELIMETER      	" "
@@ -104,6 +102,9 @@ const char * const list[][6] = {{"1956",	"Lugano",		"Switzerland",									"N/A"
 #define COMMAND_WINNER			"winner"
 #define COMMAND_VICTORIOUS		"victorious"
 #define COMMAND_RUNNER_UP		"runner-up"
+
+#define END_SESSION_MANUAL "exit\n"
+#define END_SESSION_SCRIPT "exit"
 
 /************************************************************ Auxiliary functions */
 
@@ -304,17 +305,23 @@ int main(void)
 		if (full_read(newsockfd, query, BUFFER_SIZE) < 0)
 			error("ERROR reading from socket");
 
-		// Terminate session
+		// Check if terminate session
 
-		if (!strcmp(query, END_SESSION) || ( strlen(query) == 7 && query[strlen(query)-2] == END_FILE ) ){
+		if (!strcmp(query, END_SESSION_MANUAL) || !strcmp(query, END_SESSION_SCRIPT)){
 			break;
 		}
+
+		printf("%s", query);
+
+        // Applying command
+
+        if (query[strlen(query) - 1] == '\n'){
+        	query[strlen(query) - 1] = 0;
+        }
 
         // Extracting command and arguments from user input
 
     	char *args[MAX_ARGUMENTS];
-
-        //query[(int) strlen(command)-1] = STRING_END;
 
         char *token = strtok(query, ARGS_DELIMETER);
 
@@ -325,7 +332,7 @@ int main(void)
             token = strtok(NULL, ARGS_DELIMETER);
         }
 
-        // Applying command
+		// Check if line ends with '\n'
 
 		bzero(result, BUFFER_SIZE);
 

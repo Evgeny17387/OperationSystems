@@ -136,11 +136,9 @@ int main(void)
 
 		// Check if terminate session
 
-		if (!strcmp(query, END_SESSION) || ( strlen(query) == 7 && query[strlen(query)-2] == END_FILE ) ){
+		if (!strcmp(query, END_SESSION_MANUAL) || !strcmp(query, END_SESSION_SCRIPT)){
 			terminate = 1;
 		}
-
-        query[strlen(query)-1] = ' ';
 
 		// Write to socket
 		
