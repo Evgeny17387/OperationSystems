@@ -103,10 +103,31 @@ const char * const list[][6] = {{"1956",	"Lugano",		"Switzerland",									"N/A"
 #define COMMAND_VICTORIOUS		"victorious"
 #define COMMAND_RUNNER_UP		"runner-up"
 
-#define END_SESSION_MANUAL "exit\n"
-#define END_SESSION_SCRIPT "exit"
+#define END_SESSION_MANUAL 		"exit\n"
+#define END_SESSION_SCRIPT 		"exit"
+
+#define ERROR_CODE_SUCCESS		0
+#define ERROR_CODE_FAILURE		1
 
 /************************************************************ Auxiliary functions */
+
+int check_year_single(int year){
+	if (year < 1956 || year > 2018){
+		return ERROR_CODE_FAILURE;
+	}
+	return ERROR_CODE_SUCCESS;
+}
+
+int check_year_double(int year_from, int year_to){
+	if (year_from > year_to){
+		return ERROR_CODE_FAILURE;
+	}else if (check_year_single(year_from) == ERROR_CODE_FAILURE){
+		return ERROR_CODE_FAILURE;
+	}else if (check_year_single(year_to) == ERROR_CODE_FAILURE){
+		return ERROR_CODE_FAILURE;
+	}
+	return ERROR_CODE_SUCCESS;
+}
 
 void to_lower(const char* buffer_in, char* buffer_out)
 {
@@ -337,16 +358,46 @@ int main(void)
 		bzero(result, BUFFER_SIZE);
 
         if (strcmp(args[0], COMMAND_WINNER) == 0){
-			print_winner(atoi(args[1]), result);
-			printf("%s", result);
-        }else if (strcmp(args[0], COMMAND_VICTORIOUS) == 0){
-			print_times_victorious(args[3], atoi(args[1]), atoi(args[2]), result);
-			printf("%s", result);
-        }else if (strcmp(args[0], COMMAND_RUNNER_UP) == 0){
-			print_times_runner_up(args[3], atoi(args[1]), atoi(args[2]), result);
-			printf("%s", result);
+
+			int year = atoi(args[1]);
+			if (check_year_single(year) == ERROR_CODE_FAILURE){
+        		print_error(result);
+				if (full_write(newsockfd, result, BUFFER_SIZE) < 0)
+					error("ERROR writing to socket");
+    			continue;
+			}
+
+			print_winner(year, result);
+
         }else{
-        }
+
+	        if (strcmp(args[0], COMMAND_VICTORIOUS) == 0){
+				int year_from = atoi(args[1]);
+				int year_to = atoi(args[2]);
+				if (check_year_double(year_from, year_to) == ERROR_CODE_FAILURE){
+	        		print_error(result);
+					if (full_write(newsockfd, result, BUFFER_SIZE) < 0)
+						error("ERROR writing to socket");
+	    			continue;
+				}
+
+				print_times_victorious(args[3], year_from, year_to, result);
+	        }else if (strcmp(args[0], COMMAND_RUNNER_UP) == 0){
+				int year_from = atoi(args[1]);
+				int year_to = atoi(args[2]);
+				if (check_year_double(year_from, year_to) == ERROR_CODE_FAILURE){
+	        		print_error(result);
+					if (full_write(newsockfd, result, BUFFER_SIZE) < 0)
+							error("ERROR writing to socket");
+		    			continue;
+				}
+
+				print_times_runner_up(args[3], year_from, year_to, result);
+	        }else{
+	        	print_error(result);
+	        }
+
+    	}
 
 		// Write to socket
 
