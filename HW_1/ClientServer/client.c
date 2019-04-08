@@ -10,8 +10,8 @@
 #include <netinet/in.h>
 
 #include <unistd.h>
-#include <strings.h>
 #include <string.h>
+#include <strings.h>
 
 #include <netdb.h>
 
@@ -22,7 +22,8 @@
 #define IP "127.0.0.1"
 #define PORTNO 8888
 
-#define END_SESSION "close\n"
+#define END_SESSION_MANUAL "exit\n"
+#define END_SESSION_SCRIPT "exit"
 
 #define END_FILE 13
 
@@ -30,7 +31,53 @@
 
 void error(char *msg) {
 	perror(msg);
-	exit(0);
+	exit(1);
+}
+
+int full_write(int fd, void* buf, int n)
+{
+	int res;
+	while (n > 0)
+	{
+		res = write(fd, buf, n);
+		if (res == -1)
+		{
+			return -1;
+		}
+
+		if (res == 0)
+		{
+			return res;
+		}
+
+		n =- res;
+		buf = (char*)(buf)+res;
+	}
+
+	return res;
+}
+
+int full_read(int fd, void* buf, int n)
+{
+	int res;
+	while (n > 0)
+	{
+		res = read(fd, buf, n);
+		if (res == -1)
+		{
+			return -1;
+		}
+
+		if (res == 0)
+		{
+			return res;
+		}
+
+		n =- res;
+		buf = (char*)(buf)+res;
+	}
+
+	return res;
 }
 
 /************************************************************************ Main */
@@ -51,48 +98,41 @@ int main(void)
 
 	int terminate = 0;
 
-	int n;
+	// Socket - Open
+
+	sockfd = socket(AF_INET, SOCK_STREAM, 0);
+	if (sockfd < 0)
+		error("socket failed\n");
 
 	// Server - Find
 
 	server = gethostbyname(IP);
-
-	if (server == NULL) {
-		fprintf(stderr,"ERROR, no such host\n");
-		exit(0);
-	}
-
-	printf("[Client] Connected\n");
+	if (server == NULL)
+		error("ERROR, no such host\n");
 
 	// Server - Configuration
 
-	bzero((char *) &serv_addr, sizeof(serv_addr));
+	bzero((char *)&serv_addr, sizeof(serv_addr));
 	serv_addr.sin_family = AF_INET;
-	bcopy((char *)server->h_addr_list[0], (char *) &serv_addr.sin_addr.s_addr, server->h_length);
+	memcpy((void*)&serv_addr.sin_addr.s_addr, (void*)server->h_addr_list[0], server->h_length);
 	serv_addr.sin_port = htons(PORTNO);
+
+	// Socket - Connect
+
+	if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
+		error("ERROR connecting");
+
+	printf("[Client] Connected\n");
 
 	// Read queries from user
 
     while (1)
     {
 
-		// Socket - Open
-
-		sockfd = socket(AF_INET, SOCK_STREAM, 0);
-		if (sockfd < 0)
-		{
-			printf("socket failed\n");
-			exit(0);
-		}
-
-		// Socket - Connect
-
-		if (connect(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr)) < 0)
-			error("ERROR connecting");
-
 		// Read from User
 
-		fgets(query, BUFFER_SIZE, stdin);
+		bzero(query, BUFFER_SIZE);
+        fgets(query, BUFFER_SIZE, stdin);
 
 		// Check if terminate session
 
@@ -100,35 +140,32 @@ int main(void)
 			terminate = 1;
 		}
 
+        query[strlen(query)-1] = ' ';
+
 		// Write to socket
-
-		n = write(sockfd, query, sizeof(query));
-
-		if (n < 0)
+		
+		if (full_write(sockfd, query, BUFFER_SIZE) < 0)
 			error("ERROR writing to socket");
-
-		// Read from socket
-
-		bzero(result, BUFFER_SIZE);
-
-		n = read(sockfd, result, BUFFER_SIZE-1);
-
-		if (n < 0)
-			error("ERROR reading from socket");
-
-    	// Close connection
-
-    	close(sockfd);
 
 		// Terminate session or print result
 
 		if (terminate){
 			break;
-		}else{
-			printf("%s", result);
 		}
 
+		// Read from socket
+
+		bzero(result, BUFFER_SIZE);
+		if (full_read(sockfd, result, BUFFER_SIZE) < 0)
+			error("ERROR reading from socket");
+
+		printf("%s", result);
+
     }
+
+	// Close connection
+
+	close(sockfd);
 
     return 0;
 

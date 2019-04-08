@@ -87,14 +87,23 @@ const char * const list[][6] = {{"1956",	"Lugano",		"Switzerland",									"N/A"
 								{"2017",	"Kiev",			"Portugal",										"758",	"143",	"Bulgaria"},
 								{"2018",	"Lisbon",		"Israel",										"529",	"93",	"Cyprus"}};
 
-#define LIST_LENGTH 63
-#define BUFFER_SIZE 300
+#define LIST_LENGTH 			63
+#define BUFFER_SIZE 			300
+#define END_SESSION 			"exit"
+#define END_SESSION_RESPONSE 	"\n"
+#define PORTNO 					8888
+#define END_FILE 				13
 
-#define MAX_LINE 256
-#define END_SESSION "close\n"
-#define END_SESSION_RESPONSE "\n"
-#define PORTNO 8888
-#define END_FILE 13
+#define MAX_ARGUMENTS       	10
+#define ARGS_DELIMETER      	" "
+
+#define MAX_WINNERS       		10
+#define WINNERS_DELIMETER     	", "
+#define MAX_WINNER_NAME			100
+
+#define COMMAND_WINNER			"winner"
+#define COMMAND_VICTORIOUS		"victorious"
+#define COMMAND_RUNNER_UP		"runner-up"
 
 /************************************************************ Auxiliary functions */
 
@@ -137,19 +146,42 @@ void print_winner(int year, char* buffer)
 	}
 }
 
-void print_times_victorious(char* country, int times, int from_year, int to_year, char* buffer)
+int HowManyTimes(char* country, int from_year, int to_year, int column){
+	int count = 0;
+	int i = from_year - 1956;
+	for (; i < to_year - 1956 + 1; i++){
+		char winner[MAX_WINNER_NAME];
+		strcpy(winner, list[i][column]);
+        char *token = strtok(winner, WINNERS_DELIMETER);
+        while (token != NULL) {
+			if (strcmp(token, country) == 0){
+				count++;
+			}
+            token = strtok(NULL, WINNERS_DELIMETER);
+        }
+	}
+	return count;
+}
+
+void print_times_victorious(char* country, int from_year, int to_year, char* buffer)
 {
 	to_lower(country, country);
 	capitalize(country);
 	memset(buffer, 0, BUFFER_SIZE);
+	
+	int times = HowManyTimes(country, from_year, to_year, 2);
+
 	sprintf(buffer, "%s has won the Eurovision %d %s between %d to %d.\n", country, times, times == 1 ? "time" : "times", from_year, to_year);
 }
 
-void print_times_runner_up(char* country, int times, int from_year, int to_year, char* buffer)
+void print_times_runner_up(char* country, int from_year, int to_year, char* buffer)
 {
 	to_lower(country, country);
 	capitalize(country);
 	memset(buffer, 0, BUFFER_SIZE);
+
+	int times = HowManyTimes(country, from_year, to_year, 5);
+
 	sprintf(buffer, "%s has taken the Eurovision's second-place %d %s between %d to %d.\n", country, times, times == 1 ? "time" : "times", from_year, to_year);	
 }
 
@@ -217,7 +249,8 @@ int main(void)
 
 	// Variables
 
-	char buffer[MAX_LINE];
+    char query[BUFFER_SIZE];
+    char result[BUFFER_SIZE];
 
 	struct sockaddr_in serv_addr;
 	struct sockaddr_in cli_addr;
@@ -267,23 +300,50 @@ int main(void)
 
 		// Read from socket
 
-		bzero(buffer, MAX_LINE);
-		if (full_read(newsockfd, buffer, MAX_LINE) < 0)
+		bzero(query, BUFFER_SIZE);
+		if (full_read(newsockfd, query, BUFFER_SIZE) < 0)
 			error("ERROR reading from socket");
-
-		printf("%s", buffer);
 
 		// Terminate session
 
-		if (!strcmp(buffer, END_SESSION) || ( strlen(buffer) == 7 && buffer[strlen(buffer)-2] == END_FILE ) ){
-			if (full_write(newsockfd, END_SESSION_RESPONSE, sizeof(END_SESSION_RESPONSE)) < 0)
-				error("ERROR writing to socket");
+		if (!strcmp(query, END_SESSION) || ( strlen(query) == 7 && query[strlen(query)-2] == END_FILE ) ){
 			break;
 		}
 
+        // Extracting command and arguments from user input
+
+    	char *args[MAX_ARGUMENTS];
+
+        //query[(int) strlen(command)-1] = STRING_END;
+
+        char *token = strtok(query, ARGS_DELIMETER);
+
+        int argsIndex = 0;
+
+        while (token != NULL) {
+            args[argsIndex++] = token;
+            token = strtok(NULL, ARGS_DELIMETER);
+        }
+
+        // Applying command
+
+		bzero(result, BUFFER_SIZE);
+
+        if (strcmp(args[0], COMMAND_WINNER) == 0){
+			print_winner(atoi(args[1]), result);
+			printf("%s", result);
+        }else if (strcmp(args[0], COMMAND_VICTORIOUS) == 0){
+			print_times_victorious(args[3], atoi(args[1]), atoi(args[2]), result);
+			printf("%s", result);
+        }else if (strcmp(args[0], COMMAND_RUNNER_UP) == 0){
+			print_times_runner_up(args[3], atoi(args[1]), atoi(args[2]), result);
+			printf("%s", result);
+        }else{
+        }
+
 		// Write to socket
 
-		if (full_write(newsockfd, "Got you\n", 8) < 0)
+		if (full_write(newsockfd, result, BUFFER_SIZE) < 0)
 			error("ERROR writing to socket");
 
 	}
