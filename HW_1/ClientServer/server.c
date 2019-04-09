@@ -359,6 +359,13 @@ int main(void)
 
         if (strcmp(args[0], COMMAND_WINNER) == 0){
 
+        	if (argsIndex != 2){
+				print_error(result);
+				if (full_write(newsockfd, result, BUFFER_SIZE) < 0)
+					error("ERROR writing to socket");
+    			continue;
+        	}
+
 			int year = atoi(args[1]);
 			if (check_year_single(year) == ERROR_CODE_FAILURE){
         		print_error(result);
@@ -370,6 +377,11 @@ int main(void)
 			print_winner(year, result);
 
         }else{
+
+        	if (argsIndex != 4){
+					print_error(result);
+    			continue;
+        	}
 
 	        if (strcmp(args[0], COMMAND_VICTORIOUS) == 0){
 				int year_from = atoi(args[1]);
