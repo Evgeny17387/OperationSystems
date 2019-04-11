@@ -379,7 +379,9 @@ int main(void)
         }else{
 
         	if (argsIndex != 4){
-					print_error(result);
+				print_error(result);
+				if (full_write(newsockfd, result, BUFFER_SIZE) < 0)
+					error("ERROR writing to socket");
     			continue;
         	}
 
@@ -407,6 +409,8 @@ int main(void)
 				print_times_runner_up(args[3], year_from, year_to, result);
 	        }else{
 	        	print_error(result);
+				if (full_write(newsockfd, result, BUFFER_SIZE) < 0)
+					error("ERROR writing to socket");
 	        }
 
     	}
