@@ -71,6 +71,12 @@ typedef struct {
 #define SUCCESS 0
 #define ERROR -1
 
+#define DEVICE_CAESAR 0
+#define DEVICE_XOR 1
+
+#define KEY_DEFAULT 0
+#define CAESAR_CONST 128
+
 char *buffer_caesar, *buffer_xor;
 
 /************************************************************************* Device methods implmentaion */
@@ -160,11 +166,11 @@ int encdec_open(struct inode *inode, struct file *filp)
 
 	int minor = MINOR(inode->i_rdev);
 
-    if(minor == 0)
+    if(minor == DEVICE_CAESAR)
     {
         filp->f_op = &fops_caesar;
     }
-    else if(minor == 1)
+    else if(minor == DEVICE_XOR)
     {
         filp->f_op = &fops_xor;
     }
@@ -184,7 +190,7 @@ int encdec_open(struct inode *inode, struct file *filp)
         return ERROR;
     }
 
-    private_data->key = 0;
+    private_data->key = KEY_DEFAULT;
     private_data->read_state = ENCDEC_READ_STATE_DECRYPT;
 
     // Update file pointer
@@ -258,11 +264,11 @@ int encdec_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsig
 
 			int minor = MINOR(inode->i_rdev);
 
-            if(minor == 0)
+            if(minor == DEVICE_CAESAR)
             {
                 memset(buffer_caesar, 0, memory_size);
             }
-            else if(minor == 1)
+            else if(minor == DEVICE_XOR)
             {
                 memset(buffer_xor, 0, memory_size);
             }
@@ -291,22 +297,257 @@ int encdec_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsig
 	return SUCCESS;
 }
 
-/************************************************************************* Specific encription methods implmentaion */
+/************************************************************************* Specific encription methods implmentaion - CAESAR */
 
-// Add implementations for:
-// ------------------------
-ssize_t encdec_read_caesar( struct file *filp, char *buf, size_t count, loff_t *f_pos ){
-	return 0;
+ssize_t encdec_write_caesar(struct file *filp, const char *buf, size_t count, loff_t *f_pos)
+{
+
+	// Input arguments check
+
+	if (filp == NULL){
+        printk("encdec_write_caesar.filp - FAIL\n");
+		return ERROR;
+	}
+
+	if (f_pos == NULL){
+        printk("encdec_open.f_pos - FAIL\n");
+		return ERROR;
+	}
+
+	// Parameters initiation
+
+    encdec_private_date *private_date = filp->private_data;
+
+    if(private_date == NULL)
+    {
+        printk("encdec_write_caesar.private_date - FAIL\n");
+        return ERROR;
+    }
+
+    int buffer_caesar_index = (*f_pos);
+
+    if(buffer_caesar_index + count > memory_size)
+        return -ENOSPC;
+
+    char *buffer_temp = kmalloc(count*sizeof(char), GFP_KERNEL);
+
+    int buffer_temp_index;
+
+    copy_from_user(buffer_temp, buf, count);
+
+	// Write all bytes from kernel buffer
+
+    for(buffer_temp_index = 0; buffer_temp_index < count; buffer_temp_index++, buffer_caesar_index++)
+    {
+        buffer_caesar[buffer_caesar_index] = (buffer_temp[buffer_temp_index] + private_date->key) % CAESAR_CONST;
+    }
+
+    (*f_pos) = buffer_caesar_index;
+
+    kfree(buffer_temp);
+
+    printk("encdec_write_caesar - SUCCESS\n");
+
+    return SUCCESS;
+
 }
 
-ssize_t encdec_write_caesar(struct file *filp, const char *buf, size_t count, loff_t *f_pos){
-	return 0;
+ssize_t encdec_read_caesar(struct file *filp, char *buf, size_t count, loff_t *f_pos)
+{
+
+	// Input arguments check
+
+	if (filp == NULL){
+        printk("encdec_open.filp - FAIL\n");
+		return ERROR;
+	}
+
+	if (f_pos == NULL){
+        printk("encdec_open.f_pos - FAIL\n");
+		return ERROR;
+	}
+
+	// Parameters initiation
+
+    encdec_private_date *private_date = filp->private_data;
+
+    if(private_date == NULL)
+    {
+        printk("encdec_open.private_date - FAIL\n");
+        return ERROR;
+    }
+
+    int buffer_caesar_index = (*f_pos);
+
+    if(buffer_caesar_index >= memory_size){
+        return -EINVAL;
+    }
+
+    char *buffer_temp = kmalloc(count*sizeof(char), GFP_KERNEL);
+
+	// Read all bytes from kernel buffer
+
+    int buffer_temp_index;
+
+    for (buffer_temp_index = 0; buffer_temp_index < count && buffer_caesar_index < memory_size; buffer_temp_index++, buffer_caesar_index++)
+    {
+
+        switch(private_date->read_state)
+        {
+
+            case(ENCDEC_READ_STATE_RAW):
+
+                buffer_temp[buffer_temp_index] = buffer_caesar[buffer_caesar_index];
+
+                break;
+
+            case(ENCDEC_READ_STATE_DECRYPT):
+
+                buffer_temp[buffer_temp_index] = (buffer_caesar[buffer_caesar_index] - private_date->key) % CAESAR_CONST;
+
+                if(buffer_temp[buffer_temp_index] < 0)
+                {
+                    buffer_temp[buffer_temp_index] = -buffer_temp[buffer_temp_index];
+                }
+
+                break;
+        }
+
+    }
+
+    (*f_pos) = buffer_caesar_index;
+
+    copy_to_user(buf, buffer_temp, count);
+
+    kfree(buffer_temp);
+
+    printk("encdec_read_caesar - SUCCESS\n");
+
+    return SUCCESS;
+
 }
 
-ssize_t encdec_read_xor( struct file *filp, char *buf, size_t count, loff_t *f_pos ){
-	return 0;
+/************************************************************************* Specific encription methods implmentaion - CAESAR */
+
+ssize_t encdec_write_xor(struct file *filp, const char *buf, size_t count, loff_t *f_pos)
+{
+
+	// Input arguments check
+
+	if (filp == NULL){
+        printk("encdec_write_caesar.filp - FAIL\n");
+		return ERROR;
+	}
+
+	if (f_pos == NULL){
+        printk("encdec_open.f_pos - FAIL\n");
+		return ERROR;
+	}
+
+	// Parameters initiation
+
+    encdec_private_date *private_date = filp->private_data;
+
+    if(private_date == NULL)
+    {
+        printk("encdec_write_caesar.private_date - FAIL\n");
+        return ERROR;
+    }
+
+    int buffer_xor_index = (*f_pos);
+
+    if(buffer_xor_index + count > memory_size)
+        return -ENOSPC;
+
+    char *buffer_temp = kmalloc(count*sizeof(char), GFP_KERNEL);
+
+    int buffer_temp_index;
+
+    copy_from_user(buffer_temp, buf, count);
+
+	// Write all bytes from kernel buffer
+
+    for(buffer_temp_index = 0; buffer_temp_index < count; buffer_temp_index++, buffer_xor_index++)
+    {
+        buffer_xor[buffer_xor_index] = buffer_temp[buffer_temp_index] ^ private_date->key;
+    }
+
+    (*f_pos) = buffer_xor_index;
+
+    kfree(buffer_temp);
+
+    printk("encdec_write_caesar - SUCCESS\n");
+
+    return SUCCESS;
+
 }
 
-ssize_t encdec_write_xor(struct file *filp, const char *buf, size_t count, loff_t *f_pos){
-	return 0;
+ssize_t encdec_read_xor(struct file *filp, char *buf, size_t count, loff_t *f_pos)
+{
+
+	// Input arguments check
+
+	if (filp == NULL){
+        printk("encdec_open.filp - FAIL\n");
+		return ERROR;
+	}
+
+	if (f_pos == NULL){
+        printk("encdec_open.f_pos - FAIL\n");
+		return ERROR;
+	}
+
+	// Parameters initiation
+
+    encdec_private_date *private_date = filp->private_data;
+
+    if(private_date == NULL)
+    {
+        printk("encdec_open.private_date - FAIL\n");
+        return ERROR;
+    }
+
+    int buffer_xor_index = (*f_pos);
+
+    if(buffer_xor_index >= memory_size){
+        return -EINVAL;
+    }
+
+    char *buffer_temp = kmalloc(count*sizeof(char), GFP_KERNEL);
+
+	// Read all bytes from kernel buffer
+
+    int buffer_temp_index;
+
+    for (buffer_temp_index = 0; buffer_temp_index < count && buffer_xor_index < memory_size; buffer_temp_index++, buffer_xor_index++)
+    {
+
+        switch(private_date->read_state)
+        {
+
+            case(ENCDEC_READ_STATE_RAW):
+
+                buffer_temp[buffer_temp_index] = buffer_xor[buffer_xor_index];
+
+                break;
+
+            case(ENCDEC_READ_STATE_DECRYPT):
+
+                buffer_temp[buffer_temp_index] = buffer_xor[buffer_xor_index] ^ private_date->key;
+
+                break;
+        }
+
+    }
+
+    (*f_pos) = buffer_xor_index;
+
+    copy_to_user(buf, buffer_temp, count);
+
+    kfree(buffer_temp);
+
+    printk("encdec_read_caesar - SUCCESS\n");
+
+    return SUCCESS;
+
 }
