@@ -17,7 +17,7 @@
 #define MODULE_NAME "encdec"
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("YOUR NAME");
+MODULE_AUTHOR("Evgeny");
 
 int 	encdec_open(struct inode *inode, struct file *filp);
 int 	encdec_release(struct inode *inode, struct file *filp);
@@ -65,6 +65,9 @@ typedef struct {
 
 int init_module(void)
 {
+
+	printk("init_module - start");
+
 	major = register_chrdev(major, MODULE_NAME, &fops_caesar);
 	if(major < 0)
 	{	
@@ -83,12 +86,15 @@ void cleanup_module(void)
 	// Implemetation suggestion:
 	// -------------------------	
 	// 1. Unregister the device-driver
+
+	unregister_chrdev(major, MODULE_NAME);
+
 	// 2. Free the allocated device buffers using kfree
 }
 
 int encdec_open(struct inode *inode, struct file *filp)
 {
-	int minor = MINOR(inode->i_rdev);
+//	int minor = MINOR(inode->i_rdev);
 
 	// Implemetation suggestion:
 	// -------------------------
@@ -118,7 +124,18 @@ int encdec_ioctl(struct inode *inode, struct file *filp, unsigned int cmd, unsig
 
 // Add implementations for:
 // ------------------------
-// 1. ssize_t encdec_read_caesar( struct file *filp, char *buf, size_t count, loff_t *f_pos );
-// 2. ssize_t encdec_write_caesar(struct file *filp, const char *buf, size_t count, loff_t *f_pos);
-// 3. ssize_t encdec_read_xor( struct file *filp, char *buf, size_t count, loff_t *f_pos );
-// 4. ssize_t encdec_write_xor(struct file *filp, const char *buf, size_t count, loff_t *f_pos);
+ssize_t encdec_read_caesar( struct file *filp, char *buf, size_t count, loff_t *f_pos ){
+	return 0;
+}
+
+ssize_t encdec_write_caesar(struct file *filp, const char *buf, size_t count, loff_t *f_pos){
+	return 0;
+}
+
+ssize_t encdec_read_xor( struct file *filp, char *buf, size_t count, loff_t *f_pos ){
+	return 0;
+}
+
+ssize_t encdec_write_xor(struct file *filp, const char *buf, size_t count, loff_t *f_pos){
+	return 0;
+}
