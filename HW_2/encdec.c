@@ -403,12 +403,7 @@ ssize_t encdec_read_caesar(struct file *filp, char *buf, size_t count, loff_t *f
 
             case(ENCDEC_READ_STATE_DECRYPT):
 
-                buffer_temp[buffer_temp_index] = (buffer_caesar[buffer_caesar_index] - private_date->key) % CAESAR_CONST;
-
-                if(buffer_temp[buffer_temp_index] < 0)
-                {
-                    buffer_temp[buffer_temp_index] = -buffer_temp[buffer_temp_index];
-                }
+                buffer_temp[buffer_temp_index] = ((buffer_caesar[buffer_caesar_index] - private_date->key) + CAESAR_CONST) % CAESAR_CONST;
 
                 break;
         }
